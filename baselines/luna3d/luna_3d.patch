@@ -1,0 +1,243 @@
+diff --git a/datasets/data_module.py b/datasets/data_module.py
+index 874b4e9..615bc6b 100644
+--- a/datasets/data_module.py
++++ b/datasets/data_module.py
+@@ -1,3 +1,4 @@
++import json
+ import numpy as np
+ import omegaconf
+ import pandas as pd
+@@ -28,8 +29,10 @@ class Dataset(InMemoryDataset):
+         pre_transform: callable = None,
+         pre_filter: callable = None,
+         cfg: omegaconf = None,
++        memmap: dict = None,
+     ) -> None:
+         super().__init__(root, transform, pre_transform, pre_filter)
++        self.memmap = memmap
+         self.split = split
+         self.name = cfg.dataset.dataset_name
+         self.input_data = input_data
+@@ -44,8 +47,11 @@ class Dataset(InMemoryDataset):
+         self.process_slices()
+ 
+     def process_data(self) -> None:
+-        self.input_data = self.input_data.sort_values("cell_section", ignore_index=False)
+-        gene_names = self.filter_genes()
++        if self.memmap is None:
++            self.input_data = self.input_data.sort_values("cell_section", ignore_index=False)
++            gene_names = self.filter_genes()
++        else:
++            gene_names = list(self.memmap["genes"])
+ 
+         # Normalize coordinates
+         self.input_data = position_normalize(self.input_data)
+@@ -58,9 +64,13 @@ class Dataset(InMemoryDataset):
+ 
+         # Clean NaN rows
+         nan_rows = detect_nan_rows(positions)
+-        clean_positions, clean_node_features, clean_cell_class = self._clean_data(
+-            positions, node_features, cell_class, nan_rows
+-        )
++        if self.memmap is None:
++            clean_positions, clean_node_features, clean_cell_class = self._clean_data(
++                positions, node_features, cell_class, nan_rows
++            )
++        else:
++            assert not bool(nan_rows.any()), "NaN positions in the memmap training table"
++            clean_positions, clean_node_features, clean_cell_class = positions, node_features, cell_class
+ 
+         # Update data attributes
+         self._update_data_attributes(
+@@ -72,8 +82,11 @@ class Dataset(InMemoryDataset):
+         )
+ 
+     def _convert_data_to_tensors(self, gene_names: list):
+-        positions = torch.tensor(self.input_data[["coord_X", "coord_Y"]].values).float()
+-        node_features = torch.tensor(self.input_data[gene_names].values).float()
++        positions = torch.tensor(self.input_data[["coord_X", "coord_Y", "coord_Z"]].values).float()
++        if self.memmap is None:
++            node_features = torch.tensor(self.input_data[gene_names].values).float()
++        else:
++            node_features = torch.from_numpy(self.memmap["features"])
+         cell_class = self.input_data["cell_class"]
+         unique_class = sorted(list(cell_class.unique()))
+         cell_class, cell_class_decoder = character_to_int(
+@@ -192,7 +205,8 @@ class DataModule(AbstractDataModule):
+         )
+ 
+     def _initialize_dataset(self, split, data, cfg):
+-        return Dataset(split=split, input_data=data, cfg=cfg)
++        memmap = getattr(self, "train_memmap", None) if split == "train" else None
++        return Dataset(split=split, input_data=data, cfg=cfg, memmap=memmap)
+ 
+     def collate(self, batch):
+         return self._create_batch(batch)
+@@ -217,6 +231,21 @@ class DataModule(AbstractDataModule):
+         return batch_data
+ 
+     def data_loading(self, cfg: omegaconf.DictConfig, split) -> pd.DataFrame:
++        if split == 'train' and getattr(cfg.dataset, "train_memmap_dir", None):
++            d = cfg.dataset.train_memmap_dir
++            meta = json.load(open(f"{d}/meta.json"))
++            pos = np.load(f"{d}/pos.npy")
++            data = pd.DataFrame(
++                {"coord_X": pos[:, 0], "coord_Y": pos[:, 1], "coord_Z": pos[:, 2],
++                 "cell_section": np.array(meta["sections"], dtype=object)[np.load(f"{d}/section_id.npy")],
++                 "cell_class": np.array(meta["classes"], dtype=object)[np.load(f"{d}/class_id.npy")]},
++                index=pd.Index(np.load(f"{d}/index.npy")),
++            )
++            self.train_memmap = {"features": np.load(f"{d}/feat.npy", mmap_mode="c"), "genes": meta["genes"]}
++            assert self.train_memmap["features"].shape == (len(data), len(meta["genes"]))
++            print(f"[LUNA-3D memmap] train table {d}: {len(data):,} cells, {len(meta['genes'])} genes, "
++                  f"{data['cell_section'].nunique()} graphs", flush=True)
++            return data
+         if split == 'train':
+             data_path = cfg.dataset.train_data_path
+         elif split == 'validation':
+@@ -227,7 +256,7 @@ class DataModule(AbstractDataModule):
+         
+         # Ensure that the data contains the necessary columns, if not call standardise_dataframe_colnames:
+         data = standardise_dataframe_colnames(data)
+-        assert all(column in data.columns for column in ['coord_X', 'coord_Y', 'cell_section', 'cell_class'])
++        assert all(column in data.columns for column in ['coord_X', 'coord_Y', 'coord_Z', 'cell_section', 'cell_class'])
+         
+         return data
+ 
+diff --git a/metrics/evaluation_plot.py b/metrics/evaluation_plot.py
+index 107976a..c1c084a 100644
+--- a/metrics/evaluation_plot.py
++++ b/metrics/evaluation_plot.py
+@@ -47,7 +47,6 @@ def save_plot(fig: plt.Figure, path: str, dpi: int = DPI) -> None:
+     dpi (int, optional): The resolution of the figure in dots per inch. Defaults to DPI.
+     """
+ 
+-    plt.savefig(path, bbox_inches="tight", dpi=dpi)
+     plt.close(fig)
+ 
+ 
+@@ -83,6 +82,7 @@ def create_scatter_plot(
+ 
+ 
+ def plot_scatter_visualization(metadata_true, metadata_pred, uniques, dir):
++    return
+     fig, axarr = plt.subplots(1, 2, figsize=(16, 6))
+ 
+     # Define the color palette for the unique categories
+diff --git a/metrics/evaluation_statistics.py b/metrics/evaluation_statistics.py
+index 324d43c..63fdc75 100644
+--- a/metrics/evaluation_statistics.py
++++ b/metrics/evaluation_statistics.py
+@@ -55,10 +55,10 @@ def prepare_metadata_for_kabsch(
+ ) -> Tuple[np.ndarray, np.ndarray]:
+     """Prepare metadata for Kabsch algorithm by padding Z axis."""
+     metadata_true_filtered = np.pad(
+-        metadata_true[["coord_X", "coord_Y"]].to_numpy(), ((0, 0), (0, 1)), mode="constant"
++        metadata_true[["coord_X", "coord_Y", "coord_Z"]].to_numpy(), ((0, 0), (0, 0)), mode="constant"
+     )
+     metadata_pred_filtered = np.pad(
+-        metadata_pred[["coord_X", "coord_Y"]].to_numpy(), ((0, 0), (0, 1)), mode="constant"
++        metadata_pred[["coord_X", "coord_Y", "coord_Z"]].to_numpy(), ((0, 0), (0, 0)), mode="constant"
+     )
+ 
+     metadata_true_filtered = filter_nan_inf(metadata_true_filtered)
+diff --git a/models/model.py b/models/model.py
+index cccaa1b..d643e56 100644
+--- a/models/model.py
++++ b/models/model.py
+@@ -105,7 +105,7 @@ class Model(nn.Module):
+ 
+         self.mlp_out_pos_norm = nn.Sequential(
+             nn.Linear(
+-                hidden_dims["output_features_to_pos_dims"] + 3, hidden_mlp_dims["X"]
++                hidden_dims["output_features_to_pos_dims"] + 4, hidden_mlp_dims["X"]
+             ),
+             act_fn_out,
+             nn.Linear(hidden_mlp_dims["X"], 1),
+diff --git a/models/self_attention.py b/models/self_attention.py
+index 6eb26ca..b3247c2 100644
+--- a/models/self_attention.py
++++ b/models/self_attention.py
+@@ -57,7 +57,7 @@ class SelfAttention(nn.Module):
+ 
+         self.head_dim = self.node_features_dimensions // self.num_heads
+         self.transform_positions_for_attn_mlp = self.mlp_out_pos_norm = nn.Sequential(
+-            nn.Linear(2, 64),
++            nn.Linear(3, 64),
+             nn.ReLU(),
+             nn.Linear(64, delta_dimensions),
+         )
+@@ -74,7 +74,7 @@ class SelfAttention(nn.Module):
+         self.attention = LinearAttentionTransformer(
+             dim=node_features_dimensions, heads=num_heads, depth=1, max_seq_len=70000
+         )
+-        self.head_features_to_position = torch.nn.Linear(num_heads * self.head_dim, 2)
++        self.head_features_to_position = torch.nn.Linear(num_heads * self.head_dim, 3)
+ 
+         # Computing Diffusion Time
+         self.last_layer = last_layer
+diff --git a/utils/data/abstract_datatype.py b/utils/data/abstract_datatype.py
+index f9d9be9..d95e9af 100644
+--- a/utils/data/abstract_datatype.py
++++ b/utils/data/abstract_datatype.py
+@@ -12,7 +12,7 @@ class AbstractDataModule(LightningDataset):
+             val_dataset,
+             test_dataset,
+             batch_size=cfg.train.batch_size,
+-            num_workers=32,
++            num_workers=getattr(cfg.train, "num_workers", 32),
+             pin_memory=getattr(cfg.dataset, "pin_memory", False),
+         )
+         self.cfg = cfg
+@@ -33,7 +33,7 @@ class AbstractDataModule(LightningDataset):
+             dataset,
+             batch_size=batch_size,
+             shuffle=True,
+-            num_workers=32,
++            num_workers=getattr(self.cfg.train, "num_workers", 32),
+             pin_memory=True,
+             collate_fn=self.collate,
+             multiprocessing_context="fork",
+diff --git a/utils/data/load.py b/utils/data/load.py
+index b434c3b..8436a81 100644
+--- a/utils/data/load.py
++++ b/utils/data/load.py
+@@ -150,7 +150,7 @@ def position_normalize(input_data: pd.DataFrame) -> pd.DataFrame:
+         np.ndarray: The normalized positions.
+     """
+ 
+-    for key in ["coord_X", "coord_Y"]:
++    for key in ["coord_X", "coord_Y", "coord_Z"]:
+         if "cell_section" in input_data.columns:
+             groups = input_data.groupby("cell_section")[key]
+             min_, max_ = groups.transform("min"), groups.transform("max")
+@@ -181,6 +181,7 @@ def to_dataframe(cell_class: list, position: np.ndarray, index=None) -> pd.DataF
+             "cell_class": cell_class,
+             "coord_X": position[:, 0],
+             "coord_Y": position[:, 1],
++            "coord_Z": position[:, 2],
+         },
+         index=index,
+     )
+@@ -283,7 +284,7 @@ def compute_distance(metadata: pd.DataFrame) -> np.ndarray:
+         np.ndarray: A 2D array representing the pairwise distance matrix of the points.
+     """
+     # Convert metadata to numpy array of positions
+-    pos = np.array([metadata["coord_X"], metadata["coord_Y"]])
++    pos = np.array([metadata["coord_X"], metadata["coord_Y"], metadata["coord_Z"]])
+ 
+     # Compute and return the pairwise distance matrix
+     return cdist(pos.T, pos.T)
+diff --git a/utils/diffusion_model/diffusion/noise_model.py b/utils/diffusion_model/diffusion/noise_model.py
+index cd1b908..92273bc 100644
+--- a/utils/diffusion_model/diffusion/noise_model.py
++++ b/utils/diffusion_model/diffusion/noise_model.py
+@@ -330,7 +330,7 @@ class NoiseModel:
+         """
+         # Randomly sample positions from a normal distribution
+         positions = torch.randn(
+-            node_mask.shape[0], node_mask.shape[1], 2, device=node_mask.device
++            node_mask.shape[0], node_mask.shape[1], 3, device=node_mask.device
+         )
+ 
+         torch.manual_seed(0)

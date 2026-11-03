@@ -1,0 +1,82 @@
+{
+ "test": "allen638850",
+ "label": "Allen MERFISH C57BL6J-638850 (53 coronal sections, both hemispheres)",
+ "kind": "brain",
+ "mm_per_unit": 13.45773983001709,
+ "calibration": {
+  "iso_mm_per_unit": 13.45773983001709,
+  "s_store": [
+   1.0185775453536927,
+   1.2931099417291327,
+   0.9995762396395721
+  ],
+  "s_ref": [
+   1.0185775453536927,
+   1.2931099417291327,
+   0.9995762396395721
+  ],
+  "fold_at_midline": true
+ },
+ "store_rows": "cell_id",
+ "labels": {
+  "rule": "annotation",
+  "cell_metadata_files": [
+   "cell_metadata_with_cluster_annotation.csv (Allen MERFISH C57BL6J-638850)"
+  ],
+  "class_md5": "378827734ad9847795a895671caa2dd9",
+  "subclass_md5": "f371bbfe416858aaa4e99969963e4e48",
+  "supertype_md5": "2ba52b6c0cfd7c691dc7bf004e793b2d"
+ },
+ "moran_gene_idx": [
+  31,
+  35,
+  38,
+  50,
+  56,
+  57,
+  59,
+  69,
+  75,
+  77,
+  105,
+  110,
+  122,
+  153,
+  170,
+  174,
+  197,
+  209,
+  210,
+  220,
+  221,
+  249,
+  251,
+  255,
+  258,
+  279,
+  280,
+  299,
+  300,
+  302,
+  309,
+  310,
+  311,
+  322,
+  328,
+  333,
+  362,
+  364,
+  382,
+  385,
+  386,
+  388,
+  395,
+  397,
+  406,
+  419,
+  436,
+  440,
+  449,
+  471
+ ]
+}

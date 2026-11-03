@@ -1,0 +1,11 @@
+{
+  "model_checkpoint": "${DATA_DIR}/checkpoints/allen10x/orbis_epoch359.pt",
+  "train_meta": "${DATA_DIR}/allen10x/stores/abca1/meta.json",
+  "cohorts": {"kinds": ["primary", "strat"], "per_kind": 5, "cells_per_cohort": 100000, "draw_seed": "25000 + cohort"},
+  "sampler": {"sample_seeds": [1000, 1001, 1002], "steps": 50, "schedule": "edm", "group": 20000, "weights": "EMA", "reseating": false},
+  "pose_readout": {"landmarks": "application/landmarks/landmarks_k64.npz", "clusters": 64, "kmeans_random_state": 25000, "scale": "none for ours, train_unit_EXT for the baseline"},
+  "evaluation": {"k_nn": 15, "radii_um": [500, 250, 1000], "sw2_directions": 256, "sw2_max_cells": 1000, "reference_seeds": [26001, 26010],
+                 "bootstrap": {"B": 1000, "donor_seed": 25400, "subclass_seed": 25401}, "margins": {"hit_rate_points": 2.0, "sw2_um": 25.0}},
+  "arms": ["ours_raw", "ours_readout", "baseline_readout"],
+  "genemaps": {"sigma_um": 200, "grid_um": 200, "min_cells_covered": 5, "mask_min_count": 20, "reference_seeds": 10, "bootstrap_B": 200, "bootstrap_seed": 27001}
+}

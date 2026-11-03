@@ -1,0 +1,10 @@
+# Mapping of the dissociated 10x cells into the expression space of the spatial training brains (scripts/data/allen10x/),
+# python 3.11.16. symphonypy installed from its repository at the commit below.
+numpy==2.4.6
+scipy==1.17.1
+pandas==2.3.3
+scanpy==1.11.5
+anndata==0.12.19
+harmonypy==2.1.0
+scikit-learn==1.9.1
+symphonypy @ git+https://github.com/potulabe/symphonypy@cbda5adc531b49f5cfcfa5c0ef97dd4668209575

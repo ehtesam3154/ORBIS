@@ -1,0 +1,11 @@
+{
+ "test": "flysta2_c",
+ "label": "fly embryo 17.34h_E14-16h_c (held out)",
+ "kind": "embryo",
+ "um_per_unit": 452.1785038908124,
+ "lddt_u_um": 4.288406923124816,
+ "lddt_seed": 20261024,
+ "labels": {
+  "class_md5": "feedb36209603c0104b4ee221875a6ae"
+ }
+}

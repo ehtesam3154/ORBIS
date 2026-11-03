@@ -1,0 +1,83 @@
+{
+ "test": "abca2",
+ "label": "mouse 2 (ABC atlas MERFISH mouse 2, 66 coronal sections)",
+ "kind": "brain",
+ "mm_per_unit": 13.45773983001709,
+ "calibration": {
+  "iso_mm_per_unit": 13.45773983001709,
+  "s_store": [
+   1.0293507964344841,
+   1.244982133512552,
+   1.0015486559068691
+  ],
+  "s_ref": [
+   1.0185775453536927,
+   1.2931099417291327,
+   0.9995762396395721
+  ],
+  "fold_at_midline": false
+ },
+ "store_rows": "file",
+ "store_rows_md5": "4236b8127d97299a0487b660efece212",
+ "labels": {
+  "rule": "annotation",
+  "cell_metadata_files": [
+   "Zhuang-ABCA-2_cell_metadata_with_cluster_annotation.csv"
+  ],
+  "class_md5": "4e311720fcea7f6fc8e14c55ee50b68a",
+  "subclass_md5": "61ea025d130995c718222fa6636b0264",
+  "supertype_md5": "dc44340830d77dc59550a3db6bf04fcc"
+ },
+ "moran_gene_idx": [
+  8,
+  51,
+  70,
+  89,
+  102,
+  112,
+  129,
+  136,
+  141,
+  145,
+  163,
+  164,
+  177,
+  181,
+  258,
+  271,
+  293,
+  368,
+  402,
+  411,
+  435,
+  448,
+  474,
+  501,
+  503,
+  524,
+  553,
+  567,
+  597,
+  661,
+  662,
+  670,
+  709,
+  736,
+  738,
+  742,
+  782,
+  860,
+  881,
+  886,
+  912,
+  916,
+  919,
+  936,
+  940,
+  961,
+  1033,
+  1089,
+  1095,
+  1110
+ ]
+}

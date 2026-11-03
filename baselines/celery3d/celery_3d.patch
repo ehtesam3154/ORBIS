@@ -1,0 +1,71 @@
+diff --git a/CeLEry_package/CeLEry/DNN.py b/CeLEry_package/CeLEry/DNN.py
+index ce2bde3..4d95c70 100644
+--- a/CeLEry_package/CeLEry/DNN.py
++++ b/CeLEry_package/CeLEry/DNN.py
+@@ -29,7 +29,7 @@ class DNN(nn.Module):
+ 			# nn.BatchNorm1d(hidden_dims[2]),
+ 			nn.ReLU())
+ 		self.fclayer4 = nn.Sequential(
+-			nn.Linear(hidden_dims[2], 2),
++			nn.Linear(hidden_dims[2], 3),
+ 			# nn.BatchNorm1d(2),
+ 			nn.Sigmoid())
+ 
+diff --git a/CeLEry_package/CeLEry/datasetgenemap.py b/CeLEry_package/CeLEry/datasetgenemap.py
+index 30ce3b4..c7ff519 100644
+--- a/CeLEry_package/CeLEry/datasetgenemap.py
++++ b/CeLEry_package/CeLEry/datasetgenemap.py
+@@ -64,18 +64,22 @@ class wrap_gene_location(TensorDataset):
+ 		cord = label.to_numpy().astype('float32')
+ 		cordx = cord[:,0]
+ 		cordy = cord[:,1]
++		cordz = cord[:,2]
+ 		self.xmin = cordx.min()-1
+ 		self.ymin = cordy.min()-1
++		self.zmin = cordz.min()-1
+ 		self.xmax = cordx.max()+1
+ 		self.ymax = cordy.max()+1
++		self.zmax = cordz.max()+1
+ 		self.cordx_norm = (cordx - self.xmin)/(self.xmax-self.xmin)
+ 		self.cordy_norm = (cordy - self.ymin)/(self.ymax-self.ymin)
++		self.cordz_norm = (cordz - self.zmin)/(self.zmax-self.zmin)
+ 		self.imagedimension = self.data_tensor.shape
+ 	def __getitem__(self, index):
+ 		indexsample = index // self.imagedimension[2]
+ 		indexspot = index % self.imagedimension[2]
+ 		geneseq = self.data_tensor[indexsample,:,indexspot]
+-		cordinates = torch.tensor([self.cordx_norm[indexspot],self.cordy_norm[indexspot]])
++		cordinates = torch.tensor([self.cordx_norm[indexspot],self.cordy_norm[indexspot],self.cordz_norm[indexspot]])
+ 		return geneseq, cordinates
+ 	def __len__(self):
+ 		return self.imagedimension[0] * self.imagedimension[2]
+diff --git a/CeLEry_package/CeLEry/fit_functions.py b/CeLEry_package/CeLEry/fit_functions.py
+index 7f781b2..f2c007f 100644
+--- a/CeLEry_package/CeLEry/fit_functions.py
++++ b/CeLEry_package/CeLEry/fit_functions.py
+@@ -154,7 +154,7 @@ def Fit_domain (data_train, domain_weights, domain_data = None, domainkey = "lay
+ def Predict_cord (data_test, path = "", filename = "PreOrg_Mousesc", location_data = None):
+     testdata= (data_test.X.A if issparse(data_test.X) else data_test.X)
+     if location_data is None:
+-        location_data = pd.DataFrame(np.ones((data_test.shape[0],2)), columns = ["psudo1", "psudo2"])
++        location_data = pd.DataFrame(np.ones((data_test.shape[0],3)), columns = ["psudo1", "psudo2", "psudo3"])
+     ## Wrap up Validation data in to dataloader
+     vdatax = np.expand_dims(testdata, axis = 0)
+     vdata_rs = np.swapaxes(vdatax, 1, 2)
+@@ -166,6 +166,7 @@ def Predict_cord (data_test, path = "", filename = "PreOrg_Mousesc", location_da
+                         Val_loader = Val_loader)
+     data_test.obs["x_cord_pred"] = cord[:,0]
+     data_test.obs["y_cord_pred"] = cord[:,1]
++    data_test.obs["z_cord_pred"] = cord[:,2]
+     return cord
+ 
+ 
+@@ -182,7 +183,7 @@ def report_prop_method_sc (folder, name, data_test, Val_loader, outname = ""):
+     filehandler = open(filename2, 'rb') 
+     DNNmodel = pickle.load(filehandler)
+     #
+-    coords_predict = np.zeros((data_test.obs.shape[0],2))
++    coords_predict = np.zeros((data_test.obs.shape[0],3))
+     #
+     for i, img in enumerate(Val_loader):
+         recon = DNNmodel(img)

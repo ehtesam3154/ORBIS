@@ -1,0 +1,7 @@
+# Training and sampling environment (python 3.11.16). The reported models were trained with torch 2.6.0+cu124 on RTX A4500 GPUs and
+# with torch 2.7.1+cu128 on Blackwell GPUs; sampling ran with torch 2.6.0+cu124. Also used for the Deep-STARmap preparation.
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+numpy==2.4.5
+scipy==1.17.1
+pandas==2.3.3
