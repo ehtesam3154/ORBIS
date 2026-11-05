@@ -15,7 +15,7 @@ expression.
 
 **Comparison.** The measured block, ORBIS and LUNA-3D (our 3-D adaptation of LUNA, see `baselines/`), with the same camera and axes, each rigidly aligned to the truth (rotation, reflection, translation) with no rescaling; depth stretched 4x. Each zoom shows the same box in all three panels, at the densest 200 µm square of one cell class in the measured block. ORBIS: training seed 2 of `blockB`, 50-step sample and reseating.
 
-PASTE_LINK_HERE
+https://github.com/user-attachments/assets/32ee2d3d-6fc8-4145-9607-c91adb2dd38d
 
 This repository holds the code, the configurations and the evaluation used for every number in the paper *Generative 3D Spatial
 Reconstruction of Cellular Organization from Single-Cell Expression*.
